@@ -26,6 +26,7 @@ Base paths:
 `GET /api/mobile/feed?date=YYYY-MM-DD`
 
 Returns ordered clips for the day.
+Only clips with `visibility_state=visible` are returned.
 
 Response:
 - `date`
@@ -38,6 +39,7 @@ Response:
 `GET /api/mobile/clip/{clipId}`
 
 Returns the latest published version.
+If clip is delisted/held, returns legal-safe error envelope.
 
 Response:
 - `clipId`
@@ -45,7 +47,11 @@ Response:
 - `payload`
 
 ### 3. Clip by id + version
-### 3. Health/version
+`GET /api/mobile/clip/{clipId}/v/{version}`
+
+Returns a specific published version if legally available.
+
+### 4. Health/version
 `GET /api/mobile/health`
 
 Response:
@@ -164,6 +170,64 @@ Admin only.
 ### 17. Manual retry
 `POST /api/creator/clips/{clipId}/retry-processing`
 
+### 18. Update rights evidence
+`PUT /api/creator/clips/{clipId}/rights-evidence`
+
+Request:
+- `sourceLink`
+- `uploaderAttestation`
+- `attributionText`
+- `rightsConfidence` (`high` | `medium` | `low`)
+
+### 19. Get legal status
+`GET /api/creator/clips/{clipId}/legal-status`
+
+Response:
+- `rightsStatus`
+- `rightsConfidence`
+- `visibilityState`
+- `openTakedownCase` (nullable)
+
+---
+
+## admin-api
+
+### 1. Open takedown case
+`POST /api/admin/clips/{clipId}/takedown`
+
+Request:
+- `severity` (`critical` | `high` | `standard`)
+- `reason`
+- `claimRef`
+
+Behavior:
+- sets clip `visibilityState=delisted_legal`
+- creates takedown case and initial event
+
+### 2. Reinstate clip
+`POST /api/admin/clips/{clipId}/reinstate`
+
+Request:
+- `reason`
+- `caseId`
+
+Behavior:
+- if approved, sets clip `visibilityState=visible`
+- appends reinstatement event + audit log
+
+### 3. List legal takedown cases
+`GET /api/admin/legal/takedowns?status=&severity=`
+
+Returns paginated takedown case list with clip refs.
+
+### 4. Add legal event
+`POST /api/admin/legal/takedowns/{caseId}/events`
+
+Request:
+- `action`
+- `reason`
+- `metadata` (optional)
+
 ---
 
 ## webhooks-and-callbacks
@@ -186,6 +250,7 @@ Creator portal auth:
 Mobile API:
 - Public read-only
 - Protected by rate limits only
+- May return legal restriction codes for delisted or held content.
 
 ---
 
@@ -217,3 +282,6 @@ Core error codes:
 - `rate_limited`
 - `processing_failed`
 - `validation_failed`
+- `content_restricted`
+- `takedown_pending`
+- `legal_hold`

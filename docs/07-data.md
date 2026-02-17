@@ -24,6 +24,8 @@ The schema is designed for **versioned, immutable clip publishing** and editoria
   - `id` — stable identity across versions
   - `owner_id` — FK → `users.id` (ownership and edit access)
   - `rights_status` — enum: `unknown`, `cleared`, `restricted`, `takedown`
+  - `rights_confidence` — enum: `high`, `medium`, `low`
+  - `visibility_state` — enum: `visible`, `delisted_legal`, `quarantined`, `removed`
   - `source_type` — enum: `original`, `licensed`, `public_domain`, `user_submitted`
   - `created_at` — clip record creation timestamp
   - `updated_at` — last metadata edit timestamp
@@ -87,10 +89,38 @@ The schema is designed for **versioned, immutable clip publishing** and editoria
   - `difficulty` — integer 1–5
   - `clip_version_id` — FK → `clip_versions.id`
 
+- `clip_rights_evidence`
+  - `id` — primary key
+  - `clip_id` — FK → `clips.id`
+  - `source_link` — provenance link or external reference
+  - `uploader_attestation` — uploader rights declaration
+  - `attribution_text` — required attribution text
+  - `evidence_status` — enum: `pending`, `verified`, `rejected`
+  - `reviewed_by` — FK → `users.id` (nullable)
+  - `reviewed_at` — timestamp (nullable)
+
+- `takedown_cases`
+  - `id` — primary key
+  - `clip_id` — FK → `clips.id`
+  - `status` — enum: `received`, `needs_info`, `delisted`, `counter_notice_review`, `reinstated`, `closed`
+  - `severity` — enum: `critical`, `high`, `standard`
+  - `claimant_ref` — contact/reference pointer
+  - `opened_at` — case creation timestamp
+  - `closed_at` — timestamp (nullable)
+
+- `takedown_events`
+  - `id` — primary key
+  - `case_id` — FK → `takedown_cases.id`
+  - `actor_id` — FK → `users.id` (nullable for external intake)
+  - `action` — enum: `intake`, `request_info`, `delist`, `legal_hold`, `counter_notice`, `reinstate`, `remove`, `close`
+  - `reason` — text
+  - `metadata` — JSON payload
+  - `created_at` — event timestamp
+
 - `audit_log`
   - `id` — primary key
   - `actor_id` — FK → `users.id`
-  - `action` — enum: `upload`, `edit`, `publish`, `rollback`, `delete`, `retry`
+  - `action` — enum: `upload`, `edit`, `publish`, `rollback`, `delete`, `retry`, `legal_delist`, `legal_reinstate`, `legal_hold`, `legal_remove`
   - `target_type` — enum: `clip`, `clip_version`, `segment`, `token`, `group`, `meaning`, `gloss`, `job`
   - `target_id` — target entity id
   - `metadata` — JSON payload describing the change
@@ -106,6 +136,9 @@ The schema is designed for **versioned, immutable clip publishing** and editoria
 - `clip_versions` 1 → many `lexicon_entries`
 - `feed_items` → `clip_versions`
 - `processing_jobs` → `clips`
+- `clip_rights_evidence` → `clips`
+- `takedown_cases` → `clips`
+- `takedown_events` → `takedown_cases`
 
 ---
 
@@ -138,7 +171,7 @@ Clip payload media fields are defined in `docs/03-clip-spec.md`.
 ### Core queries
 
 - Daily feed fetch:
-  - `feed_items(date, position)`
+  - `feed_items(date, position)` + `clips.visibility_state`
 - Clip by id + version:
   - `clips(id)`
   - `clip_versions(clip_id, version)`
@@ -150,6 +183,10 @@ Clip payload media fields are defined in `docs/03-clip-spec.md`.
   - `clips(owner_id, updated_at)`
 - Audit queries:
   - `audit_log(target_type, target_id, created_at)`
+- Takedown queue:
+  - `takedown_cases(status, severity, opened_at)`
+- Rights evidence review:
+  - `clip_rights_evidence(clip_id, evidence_status, reviewed_at)`
 
 Indexes should be created to match these access patterns.
 
@@ -159,9 +196,10 @@ Indexes should be created to match these access patterns.
 
 MVP policy:
 - Keep all data by default.
-- Manual takedown removes `feed_items` and marks clip inactive.
+- Takedown delist removes clip from feed and sets `visibility_state=delisted_legal`.
 - Historical versions remain for audit.
-- R2 objects are retained unless legal removal is required.
+- R2 objects are quarantined by default for takedown cases and retained under legal hold.
+- Permanent object deletion is performed only after legal determination.
 
 ---
 

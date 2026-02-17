@@ -261,7 +261,9 @@ A clip is publishable only if:
 - Timing feels natural
 - Tokens are tappable without overlap
 - No visual clutter at default layer
-- Rights are cleared or attribution is correct
+- Attribution metadata is present
+- Rights confidence is recorded (`high` | `medium` | `low`)
+- No active legal hold blocks distribution
 
 If any of these fail, the clip is not published.
 

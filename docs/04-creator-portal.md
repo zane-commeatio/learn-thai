@@ -33,7 +33,7 @@ Every clip served to learners must pass through this system.
 - **Creator**
   - can upload clips
   - can edit content they own
-  - cannot publish without review (MVP configurable)
+  - can publish after required editorial checks
 - **Reviewer** (optional, later)
   - can edit transcripts, meanings, glosses
   - cannot upload or delete clips
@@ -76,7 +76,7 @@ Once upload completes, the system automatically:
 
 1. Queues a processing job
 2. Runs speech-to-text
-3. Runs forced alignment
+3. Shapes timing from ASR output (word-level when reliable, segment fallback otherwise)
 4. Tokenizes Thai
 5. Prefills glosses
 6. Marks clip as **Ready for Review**
@@ -218,7 +218,7 @@ Validation checks block publishing if:
 - meaning is missing
 - transcript is empty
 - timings are invalid
-- rights status is unclear
+- legal hold is active
 
 ---
 
@@ -257,10 +257,25 @@ Each clip must declare:
 - creator identity
 - attribution requirements
 - rights status
+- rights confidence
+- source/provenance evidence link
 
 The portal must surface this clearly.
 
-Clips with unclear rights must not publish.
+Rights uncertainty does not automatically block publish in MVP.
+Clips remain subject to rapid delist and takedown enforcement.
+
+### Takedown override and rapid delist workflow
+
+Admin controls must support:
+- immediate legal delist of a published clip
+- legal hold tagging
+- reinstatement with documented reason
+
+Operational rules:
+- Delist action removes clip from feed/API distribution immediately.
+- Delist and reinstatement actions require reason text.
+- Every legal action is written to the audit log.
 
 ---
 
