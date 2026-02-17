@@ -50,7 +50,7 @@ Any feature or architectural decision that violates these constraints is rejecte
 
 ## How this documentation is organized
 
-The documentation is split into **16 canonical documents**, each covering a major domain.
+The documentation is split into **17 canonical documents**, each covering a major domain.
 
 Each document:
 - is a single file
@@ -142,6 +142,9 @@ Docs evolve, but:
 16. Appendix  
     Glossary, decisions, risks.
 
+17. Engineering Guidelines  
+    Coding standards, patterns, and delivery rules.
+
 ---
 
 ## Decision discipline
@@ -162,6 +165,7 @@ This prevents architectural drift and hindsight rewrites.
 4. 03 — Clip Spec  
 5. 05 — Processing Pipeline  
 6. 06 — Architecture  
+7. 17 — Engineering Guidelines
 
 Only then should someone touch code.
 
