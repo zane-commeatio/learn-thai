@@ -83,6 +83,9 @@ It applies to:
 ## data-and-migration-rules
 
 - Schema changes must be migration-based and reversible when practical.
+- Use Drizzle schema definitions as the only source of truth for DB structure.
+- Never write SQL migrations manually; generate migrations from Drizzle schema changes.
+- Never hand-edit generated migration SQL files.
 - Never rewrite immutable published clip history.
 - Use transactions for multi-table state transitions (publish, rollback, takedown lifecycle).
 - Keep enums and state machine transitions aligned with docs (`07-data`, `05-processing-pipeline`).
@@ -133,6 +136,8 @@ It applies to:
   2. `unit tests`
   3. integration tests for changed domains
   4. smoke checks for staging deploy
+- Migration integrity gate:
+  - CI must fail if files under migration output (for example `infra/db/migrations/*.sql`) change without at least one corresponding change under `infra/db/schema/*`.
 - Required test coverage for each feature change:
   - happy path
   - validation failure path

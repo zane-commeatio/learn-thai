@@ -1,0 +1,290 @@
+# 00-repo-structure
+
+This document defines the concrete repository layout for implementation.
+
+## Goals
+
+- One **Next.js app** hosting:
+  - landing page
+  - creator portal
+  - admin portal
+  - API routes
+- One **Expo app** for learner mobile.
+- Shared packages for contracts, validation, and utilities.
+- Clear boundaries for processing pipeline jobs.
+
+---
+
+## Top-Level Layout
+
+```txt
+learn-thai/
+  apps/
+    web/                    # Next.js app: landing + creator/admin + API routes
+    mobile/                 # Expo app (learner app)
+  packages/
+    contracts/              # Shared API/domain types + schemas
+    config/                 # Shared tsconfig/eslint/prettier presets
+    ui/                     # Shared web UI primitives (optional)
+    utils/                  # Shared pure utilities (no IO side effects)
+  workers/
+    processing/             # Queue/job runner for upload processing pipeline
+  infra/
+    db/
+      schema/               # Drizzle schema source of truth
+      migrations/           # Drizzle-generated migration files
+    scripts/                # Operational scripts (seed, backfill, checks)
+  implementation-docs/
+    00-repo-structure.md
+    01-processing-pipeline.md
+  docs/                     # Product/spec docs (source of truth)
+  package.json
+  pnpm-workspace.yaml
+  turbo.json
+  .env.example
+```
+
+---
+
+## apps/web (Next.js)
+
+```txt
+apps/web/
+  app/
+    (marketing)/
+      page.tsx              # Landing page
+      pricing/page.tsx
+      about/page.tsx
+    (portal)/
+      creator/
+        clips/page.tsx
+        clips/[clipId]/page.tsx
+      admin/
+        review-queue/page.tsx
+        legal/takedowns/page.tsx
+      layout.tsx
+    api/
+      mobile/
+        health/route.ts
+        feed/route.ts
+        clip/[clipId]/route.ts
+      creator/
+        clips/route.ts
+        clips/[clipId]/upload-complete/route.ts
+        clips/[clipId]/processing/route.ts
+        clips/[clipId]/retry-processing/route.ts
+      admin/
+        clips/[clipId]/takedown/route.ts
+        clips/[clipId]/reinstate/route.ts
+        legal/takedowns/route.ts
+  src/
+    server/
+      auth/                 # Role/auth guards
+      db/                   # DB client + repositories
+      services/             # Domain services (thin route handlers call these)
+      queue/                # Queue publisher helpers
+      observability/        # Logging/metrics helpers
+    features/
+      creator/
+      admin/
+      landing/
+    components/
+    lib/
+  public/
+  tests/
+    api/
+    integration/
+  next.config.mjs
+  package.json
+```
+
+### Rules
+
+- Route handlers are thin; business logic lives in `src/server/services`.
+- API contracts come from `packages/contracts`.
+- All creator/admin writes pass through server-side role checks.
+
+---
+
+## apps/mobile (Expo)
+
+```txt
+apps/mobile/
+  app/
+    (tabs)/
+      index.tsx
+    clip/[clipId].tsx
+  src/
+    screens/
+      FeedScreen.tsx
+      PlayerScreen.tsx
+    components/
+      Player/
+      Subtitle/
+    state/
+      feedStore.ts
+      playerStore.ts
+    data/
+      apiClient.ts
+      feedCache.ts
+      clipCache.ts
+    media/
+      playerController.ts
+      subtitleRenderer.ts
+      slowdown.ts
+    analytics/
+      events.ts
+      tracker.ts
+    utils/
+      ids.ts
+      time.ts
+      logger.ts
+  assets/
+  tests/
+    unit/
+    integration/
+  app.json
+  package.json
+```
+
+### Rules
+
+- No direct network calls in UI components.
+- API response parsing/validation uses shared contracts package.
+- Playback state remains isolated to player/feed domain stores.
+
+---
+
+## workers/processing
+
+```txt
+workers/processing/
+  src/
+    runner/
+      queueConsumer.ts       # Message intake + job claim/lock
+      jobExecutor.ts         # Orchestrates stage progression
+    stages/
+      audio.ts
+      asr.ts
+      segment.ts
+      tokenize.ts
+      gloss.ts
+      finalize.ts
+    adapters/
+      whisper.ts
+      storage.ts
+    domain/
+      processingJobsRepo.ts
+      clipsRepo.ts
+      auditRepo.ts
+    observability/
+      logger.ts
+      metrics.ts
+    index.ts
+  tests/
+    unit/
+    integration/
+  package.json
+```
+
+### Rules
+
+- Stage order is fixed: `audio -> asr -> segment -> tokenize -> gloss -> finalize`.
+- No auto-retry loops; retries are manual via API.
+- Every stage transition writes audit/metrics/log events.
+
+---
+
+## packages/contracts
+
+```txt
+packages/contracts/
+  src/
+    api/
+      mobile.ts
+      creator.ts
+      admin.ts
+      errors.ts
+    domain/
+      clip.ts
+      processing.ts
+      legal.ts
+    schemas/
+      zod/
+        mobile.ts
+        creator.ts
+        processing.ts
+  package.json
+```
+
+### Rules
+
+- Single source for request/response schemas and shared enums.
+- Web routes, workers, and mobile client all import from this package.
+
+---
+
+## infra/migrations
+
+```txt
+infra/db/
+  schema/
+    clips.ts
+    processingJobs.ts
+    auditLog.ts
+    legal.ts
+  migrations/
+    0000_*.sql              # generated by Drizzle tooling
+  drizzle.config.ts
+```
+
+### Rules
+
+- Drizzle schema files are the single source of truth for DB structure.
+- Migrations are generated from schema changes via Drizzle tooling.
+- Never hand-write or edit SQL migration files manually.
+- Forward-only migration history.
+- Rollback strategy documented per migration.
+- Schema must match `docs/07-data.md`.
+
+---
+
+## Root Tooling
+
+```txt
+package.json              # workspace scripts
+pnpm-workspace.yaml       # monorepo package discovery
+turbo.json                # task pipeline
+.env.example              # shared env var reference
+```
+
+### Required workspace scripts
+
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm test:integration`
+- `pnpm dev:web`
+- `pnpm dev:mobile`
+- `pnpm dev:worker`
+- `pnpm check:migrations` (fails if migration SQL changed without matching schema changes)
+
+---
+
+## Implementation Order (Repo Setup)
+
+1. Create workspace root + package manager config.
+2. Scaffold `apps/web` and wire landing + health route.
+3. Scaffold `apps/mobile` with feed screen shell.
+4. Scaffold `packages/contracts` and connect web/mobile imports.
+5. Scaffold `workers/processing` runner with no-op stage flow.
+6. Add `infra/db` (Drizzle schema + generated migrations) and DB client wiring.
+7. Enable CI commands at root (`lint`, `typecheck`, `test`).
+
+---
+
+## Non-Goals (Initial Setup)
+
+- No microservice split beyond `web` + `worker` packages.
+- No separate backend framework outside Next.js route handlers.
+- No shared design system package unless needed by both web surfaces.

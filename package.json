@@ -1,0 +1,19 @@
+{
+  "name": "learn-thai",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:migrations": "node ./infra/scripts/check-migrations-integrity.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260208.0",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.35.0",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
+  }
+}
