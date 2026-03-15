@@ -1,5 +1,13 @@
+import type { ProcessingJobQueueMessage } from "../domain/queues/processing-jobs-queue";
+
+type ProcessingJobsQueueBinding = {
+  send(message: ProcessingJobQueueMessage): Promise<void>;
+};
+
 export type WorkerEnv = {
   API_VERSION?: string;
+  DATABASE_URL?: string;
+  PROCESSING_JOBS_QUEUE?: ProcessingJobsQueueBinding;
 };
 
 export type RuntimeConfig = {
@@ -15,4 +23,26 @@ function readOptionalEnv(env: WorkerEnv): RuntimeConfig {
 
 export function loadConfig(env: WorkerEnv): RuntimeConfig {
   return readOptionalEnv(env);
+}
+
+export function readDatabaseUrl(env: WorkerEnv): string | null {
+  const databaseUrl = env.DATABASE_URL?.trim();
+  return databaseUrl ? databaseUrl : null;
+}
+
+export function requireDatabaseUrl(env: WorkerEnv): string {
+  const databaseUrl = readDatabaseUrl(env);
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  return databaseUrl;
+}
+
+export function requireProcessingJobsQueue(env: WorkerEnv): ProcessingJobsQueueBinding {
+  if (!env.PROCESSING_JOBS_QUEUE) {
+    throw new Error("PROCESSING_JOBS_QUEUE is required");
+  }
+
+  return env.PROCESSING_JOBS_QUEUE;
 }

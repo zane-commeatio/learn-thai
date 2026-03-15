@@ -1,0 +1,15 @@
+@config "../tailwind.config.ts";
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply min-h-screen bg-slate-100 text-slate-900 antialiased;
+  background-image: radial-gradient(circle at 0% -10%, #f0f5ff 0%, #f8fafc 45%);
+}
+
+::selection {
+  @apply bg-blue-200 text-slate-900;
+}

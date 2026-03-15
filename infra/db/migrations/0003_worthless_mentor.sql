@@ -1,0 +1,1 @@
+ALTER TABLE "processing_jobs" ADD COLUMN "artifact_refs" jsonb;
