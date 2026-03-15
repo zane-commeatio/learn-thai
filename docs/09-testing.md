@@ -33,6 +33,11 @@ npm run lint
 - translation stage adapter behavior
 - finalize stage adapter payload generation
 
+### Admin unit tests
+
+- dashboard data shaping via `listClips`
+- clip detail stage view-model behavior, including finalize preview URLs and retry state handling
+
 ### Integration tests
 
 - Drizzle repositories against a real test database
@@ -43,7 +48,7 @@ npm run lint
 
 The strongest automated coverage is around backend contracts and pipeline behavior.
 
-There are currently no frontend component tests or browser end-to-end tests for the Next.js admin UI.
+There are still no frontend component tests or browser end-to-end tests for the Next.js admin UI.
 
 ## Requirements for integration tests
 
@@ -54,7 +59,7 @@ There are currently no frontend component tests or browser end-to-end tests for 
 
 ## Known gaps
 
-- no UI tests for dashboard or clip detail pages
-- no tests for the new finalize video subtitle widget
+- no rendered UI tests for dashboard or clip detail pages
+- no tests for the client-side finalize video subtitle widget playback behavior
 - no deployment smoke tests in this repo
 - no coverage reporting threshold

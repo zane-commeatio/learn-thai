@@ -29,6 +29,12 @@ Worker:
 npm run start:worker
 ```
 
+Before starting either process, run:
+
+```bash
+npm run runtime:check:deploy
+```
+
 ## Container image
 
 The Dockerfile:
@@ -38,7 +44,20 @@ The Dockerfile:
 - pre-downloads and builds the Whisper model runtime
 - runs `npm run build`
 
-The image exposes port `3000`, but the package scripts run Next on `3105`. Keep that mismatch in mind when wiring runtime commands and container ports.
+The image exposes port `3105`, which matches `npm run start`.
+
+## Deployment readiness checklist
+
+Treat deployment as ready only when all of the following are true:
+
+- one web process runs `npm run start`
+- one separate worker process runs `npm run start:worker`
+- both processes point at the same `DATABASE_URL`, `REDIS_URL`, `PROCESSING_QUEUE_NAME`, and S3 bucket config
+- the bucket named by `S3_BUCKET` already exists
+- `ffmpeg` is available in the worker runtime
+- Whisper assets for `WHISPER_MODEL_NAME` are already baked in, or `WHISPER_AUTO_DOWNLOAD=true` is intentionally enabled
+- `OPENROUTER_API_KEY` is set, because the active translate stage uses OpenRouter
+- the service/router/container maps traffic to port `3105`
 
 ## Required backing services
 
@@ -56,7 +75,7 @@ The image exposes port `3000`, but the package scripts run Next on `3105`. Keep 
 
 - `ffmpeg` must be available at runtime
 - Whisper model files must be available locally or auto-download must be enabled
-- `OPENROUTER_API_KEY` must be set if the default translation backend is used
+- `OPENROUTER_API_KEY` must be set because the active translation backend is OpenRouter
 
 ## App runtime assumptions
 

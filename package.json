@@ -15,6 +15,8 @@
     "start:worker": "sh -c 'npm run worker:ensure-ffmpeg && npm run worker:ensure-whisper && tsx src/worker-node/index.ts'",
     "worker:ensure-ffmpeg": "node ./infra/scripts/ensure-ffmpeg.mjs",
     "worker:ensure-whisper": "node ./infra/scripts/ensure-whisper-model.mjs",
+    "runtime:check": "node ./infra/scripts/runtime-readiness.mjs",
+    "runtime:check:deploy": "node ./infra/scripts/runtime-readiness.mjs --profile=deploy",
     "lexicon:build": "node ./infra/scripts/build-lexitron-lexicon.mjs",
     "check:migrations": "node ./infra/scripts/check-migrations-integrity.mjs",
     "db:generate": "drizzle-kit generate --config=./infra/db/drizzle.config.ts",

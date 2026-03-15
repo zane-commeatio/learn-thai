@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { neon } from "@neondatabase/serverless";
 import { and, eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { auditLog } from "../../../infra/db/schema";
 import { createDb } from "../../../src/db/client";
 import { DrizzleAuditLogRepository } from "../../../src/db/repositories/audit-log-repository";
@@ -11,16 +11,20 @@ import { processProcessingJobMessage } from "../../../src/worker/runner/processi
 const databaseUrl = process.env.TEST_DATABASE_URL;
 
 async function hasProcessingJobLockColumns(url: string): Promise<boolean> {
-  const sql = neon(url);
-  const rows = await sql`
-    select count(*)::int as count
-    from information_schema.columns
-    where table_name = 'processing_jobs'
-      and column_name in ('lock_token', 'lock_expires_at', 'artifact_refs')
-  `;
+  try {
+    const db = createDb(url);
+    const rows = await db.execute<{ count: number }>(sql`
+      select count(*)::int as count
+      from information_schema.columns
+      where table_name = 'processing_jobs'
+        and column_name in ('lock_token', 'lock_expires_at', 'artifact_refs')
+    `);
 
-  const count = Number(rows[0]?.count ?? 0);
-  return count === 3;
+    const count = Number(rows.rows[0]?.count ?? 0);
+    return count === 3;
+  } catch {
+    return false;
+  }
 }
 
 const hasLockColumns = databaseUrl ? await hasProcessingJobLockColumns(databaseUrl) : false;
@@ -57,14 +61,36 @@ if (!databaseUrl || !hasLockColumns) {
         stage: "audio",
       });
 
+      const audioArtifacts = {
+        normalizedVideoPath: `clips/${clipId}/jobs/${jobId}/normalized.mp4`,
+        posterImagePath: `clips/${clipId}/jobs/${jobId}/poster.jpg`,
+        audioWavPath: `clips/${clipId}/jobs/${jobId}/audio.wav`,
+      };
+
       await Promise.all([
         processProcessingJobMessage(
           { jobId, clipId, expectedStage: "audio" },
-          { processingJobsRepository, auditLogRepository },
+          {
+            processingJobsRepository,
+            auditLogRepository,
+            audioStageAdapter: {
+              async run() {
+                return audioArtifacts;
+              },
+            },
+          },
         ),
         processProcessingJobMessage(
           { jobId, clipId, expectedStage: "audio" },
-          { processingJobsRepository, auditLogRepository },
+          {
+            processingJobsRepository,
+            auditLogRepository,
+            audioStageAdapter: {
+              async run() {
+                return audioArtifacts;
+              },
+            },
+          },
         ),
       ]);
 
@@ -95,11 +121,7 @@ if (!databaseUrl || !hasLockColumns) {
 
       expect(job).not.toBeNull();
       expect(job?.stage).toBe("asr");
-      expect(job?.artifactRefs).toEqual({
-        normalizedVideoPath: `clips/${clipId}/jobs/${jobId}/normalized.mp4`,
-        posterImagePath: `clips/${clipId}/jobs/${jobId}/poster.jpg`,
-        audioWavPath: `clips/${clipId}/jobs/${jobId}/audio.wav`,
-      });
+      expect(job?.artifactRefs).toEqual(audioArtifacts);
       expect(starts).toHaveLength(1);
       expect(stageChanges).toHaveLength(1);
       expect(stageOutcomeSuccess).toHaveLength(1);

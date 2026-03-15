@@ -36,6 +36,7 @@ npm run dev:app
 npm run dev:worker
 npm run dev:stack
 npm run dev:stack:down
+npm run runtime:check
 npm run build
 npm run start
 npm run start:worker
@@ -96,6 +97,23 @@ npm run test:integration
 
 - Login page: `http://127.0.0.1:3105/login`
 - Admin dashboard: `http://127.0.0.1:3105/admin`
+
+## Local readiness check
+
+Run this before debugging startup problems:
+
+```bash
+npm run runtime:check
+```
+
+This verifies the local baseline that the active runtime expects:
+
+- app and worker share the same `DATABASE_URL`, `REDIS_URL`, and S3 bucket settings
+- admin auth vars are present for the web process
+- `ffmpeg` is available on PATH for the worker
+- Whisper assets are already present, or `WHISPER_AUTO_DOWNLOAD=true` allows on-demand install
+
+If `OPENROUTER_API_KEY` is missing, the check warns instead of failing. Local startup still works, but jobs will fail once they reach the `translate` stage.
 
 ## Common issues
 

@@ -25,6 +25,7 @@ Historical planning documents live in `docs/initial-plan/` and are not the sourc
 - `docs/08-operations.md` - deployment shape and troubleshooting basics
 - `docs/09-testing.md` - current test suite and gaps
 - `docs/10-decisions.md` - short log of key implementation decisions
+- `docs/11-roadmap.md` - grounded path from the current admin system to a learner product
 
 ## Writing rules
 

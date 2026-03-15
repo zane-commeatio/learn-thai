@@ -86,6 +86,10 @@ Translation notes:
   - Starts Next.js app
 - `npm run start:worker`
   - Starts worker process
+- `npm run runtime:check`
+  - Verifies the local runtime baseline before startup
+- `npm run runtime:check:deploy`
+  - Verifies deploy-time requirements, including the OpenRouter key
 
 ### Quality and tests
 
@@ -130,6 +134,7 @@ infra/
 ## Production Deployment (VPS)
 
 - Run Next.js app and worker as separate processes.
+- Run `npm run runtime:check:deploy` before startup.
 - Point both to VPS Postgres, Redis, and MinIO.
 - Keep MinIO path style enabled (`S3_FORCE_PATH_STYLE=true`).
 - Worker startup auto-checks and attempts to install `ffmpeg` (`npm run worker:ensure-ffmpeg`).
@@ -141,9 +146,11 @@ infra/
 - Create two services from the same image:
   - web: command `npm run start`
   - worker: command `npm run start:worker`
+- Route inbound web traffic to container port `3105`.
 - Set shared env vars for both services (`DATABASE_URL`, `REDIS_URL`, S3 vars).
 - Set ASR env vars at minimum:
   - `WHISPER_MODEL_NAME=small`
   - `WHISPER_AUTO_DOWNLOAD=false` (model already baked into image)
   - `WHISPER_WORD_TIMESTAMPS=true`
+- Set `OPENROUTER_API_KEY`; the active translate stage uses OpenRouter.
 - If you choose not to bake models into the image, set `WHISPER_AUTO_DOWNLOAD=true` for worker.
