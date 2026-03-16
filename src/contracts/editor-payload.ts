@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 export const EditorPayloadSourceSchema = z.enum(["generated", "manual"]);
+export const ClipReviewStatusSchema = z.enum([
+  "generated",
+  "edited",
+  "approved",
+  "rejected",
+  "needs_fixes",
+]);
 
 export const EditorPayloadTranslationSchema = z.object({
   englishText: z.string(),
@@ -31,10 +38,11 @@ export const EditorPayloadSchema = z.object({
   }),
   segments: z.array(EditorPayloadSegmentSchema),
   review: z.object({
-    status: z.enum(["generated", "edited"]),
+    status: ClipReviewStatusSchema,
     hasManualChanges: z.boolean(),
   }),
 });
 
 export type EditorPayload = z.infer<typeof EditorPayloadSchema>;
 export type EditorPayloadSegment = z.infer<typeof EditorPayloadSegmentSchema>;
+export type ClipReviewStatus = z.infer<typeof ClipReviewStatusSchema>;

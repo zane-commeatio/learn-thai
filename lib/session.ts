@@ -2,7 +2,7 @@ import { jwtVerify, SignJWT } from "jose";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 
-type AdminSessionPayload = {
+export type AdminSessionPayload = {
   role: "admin";
   email: string;
 };

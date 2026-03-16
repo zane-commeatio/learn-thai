@@ -6,12 +6,14 @@ import {
   isAdminServiceError,
 } from "../../../../../src/admin/services/errors";
 import { uploadClip } from "../../../../../src/admin/services/upload-clip";
+import { requireAdminSession } from "../../../../../lib/admin-auth";
 import { getDb } from "../../../../../lib/db";
 import { enqueueProcessingJob } from "../../../../../lib/queue";
 import { putObject } from "../../../../../lib/storage";
 
 export async function POST(request: Request) {
   try {
+    const session = await requireAdminSession();
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
     const file = formData.get("file");
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
         enqueueProcessingJob,
       },
       {
+        ownerId: session.email,
         title,
         fileName: file.name,
         fileType: file.type,

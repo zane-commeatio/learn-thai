@@ -40,6 +40,8 @@ type RunningJobRow = {
 
 type JobRow = RunningJobRow & {
   errorPayload?: unknown;
+  reviewStatus?: string | null;
+  hasManualChanges?: boolean | null;
 };
 
 type UploadSuccess = {
@@ -60,6 +62,14 @@ type RetrySuccess = {
   retriedFromJobId: string;
   message: string;
 };
+
+function getRetryWarningMessage(job: JobRow): string | null {
+  if (job.reviewStatus && (job.reviewStatus !== "generated" || job.hasManualChanges)) {
+    return "This clip already has saved review work. Retrying will start a new processing job and reseed the editor state when finalize completes, replacing manual edits and resetting the review status to generated.";
+  }
+
+  return null;
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
@@ -512,6 +522,11 @@ export default function DashboardClient() {
                         type="button"
                         disabled={retryMutation.isPending}
                         onClick={() => {
+                          const warningMessage = getRetryWarningMessage(job);
+                          if (warningMessage && !window.confirm(warningMessage)) {
+                            return;
+                          }
+
                           void retryMutation.mutateAsync(job.id);
                         }}
                         className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"

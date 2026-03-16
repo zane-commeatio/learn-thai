@@ -1,6 +1,7 @@
 export type AdminServiceErrorCode =
   | "invalid_request"
   | "not_found"
+  | "forbidden"
   | "invalid_state"
   | "conflict"
   | "processing_failed";
@@ -27,6 +28,10 @@ export function getAdminServiceErrorStatus(error: AdminServiceError): number {
 
   if (error.code === "not_found") {
     return 404;
+  }
+
+  if (error.code === "forbidden") {
+    return 403;
   }
 
   if (error.code === "invalid_state" || error.code === "conflict") {

@@ -8,6 +8,7 @@ const SOURCE_OBJECT_NAME = "source";
 const MIN_TITLE_LENGTH = 2;
 
 export type UploadClipInput = {
+  ownerId: string;
   title: string;
   fileName: string;
   fileType: string;
@@ -59,7 +60,7 @@ export async function uploadClip(
     await dependencies.clipsRepository.create({
       id: clipId,
       title,
-      ownerId: "admin",
+      ownerId: input.ownerId,
       sourceType: "original",
       rightsStatus: "cleared",
     });

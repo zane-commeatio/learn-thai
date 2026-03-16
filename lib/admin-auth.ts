@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "./session";
+import { ADMIN_SESSION_COOKIE, type AdminSessionPayload, verifyAdminSession } from "./session";
 
 function getAdminCredentials(): { email: string; password: string } {
   const email = process.env.ADMIN_EMAIL?.trim();
@@ -17,14 +17,20 @@ export function validateAdminCredentials(email: string, password: string): boole
   return email === configured.email && password === configured.password;
 }
 
-export async function requireAdminSession(): Promise<void> {
+export async function getAdminSession(): Promise<AdminSessionPayload | null> {
   const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
   if (!token) {
-    redirect("/login");
+    return null;
   }
 
-  const payload = await verifyAdminSession(token);
+  return verifyAdminSession(token);
+}
+
+export async function requireAdminSession(): Promise<AdminSessionPayload> {
+  const payload = await getAdminSession();
   if (!payload) {
     redirect("/login");
   }
+
+  return payload;
 }

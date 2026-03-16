@@ -10,8 +10,8 @@ describe("buildClipDetailViewModel", () => {
       clip: {
         id: "clip_1",
         title: "Greeting clip",
-        sourceType: "upload",
-        rightsStatus: "owned",
+        sourceType: "original",
+        rightsStatus: "unknown",
       },
       jobs: [
         {
@@ -90,6 +90,25 @@ describe("buildClipDetailViewModel", () => {
       },
     });
 
+    expect(result.reviewChecklist).toMatchObject({
+      isReviewReady: false,
+      summary: "1 system check still failing. Fix these before relying on this clip as publish-ready input.",
+    });
+    expect(result.reviewChecklist.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "media",
+        status: "pass",
+      }),
+      expect.objectContaining({
+        key: "rights",
+        status: "fail",
+      }),
+      expect.objectContaining({
+        key: "finalize",
+        status: "pass",
+      }),
+    ]));
+
     vi.useRealTimers();
   });
 
@@ -101,8 +120,8 @@ describe("buildClipDetailViewModel", () => {
       clip: {
         id: "clip_2",
         title: "Conversation clip",
-        sourceType: "upload",
-        rightsStatus: "licensed",
+        sourceType: "licensed",
+        rightsStatus: "cleared",
       },
       jobs: [
         {
@@ -144,6 +163,10 @@ describe("buildClipDetailViewModel", () => {
     });
     expect(finalizeStage).toMatchObject({
       progress: "pending",
+    });
+    expect(result.reviewChecklist.isReviewReady).toBe(false);
+    expect(result.reviewChecklist.items.find((item) => item.key === "finalize")).toMatchObject({
+      status: "fail",
     });
 
     vi.useRealTimers();

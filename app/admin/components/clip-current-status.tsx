@@ -13,9 +13,10 @@ type ClipCurrentStatusProps = {
     failureMessage: string | null;
     canRetry: boolean;
   } | null;
+  retryWarningMessage?: string | null;
 };
 
-export default function ClipCurrentStatus({ status }: ClipCurrentStatusProps) {
+export default function ClipCurrentStatus({ status, retryWarningMessage }: ClipCurrentStatusProps) {
   return (
     <section className="rounded-3xl border border-white/60 bg-white p-6 shadow-glass">
       <h2 className="text-xl font-semibold text-ink">Current Status</h2>
@@ -29,7 +30,7 @@ export default function ClipCurrentStatus({ status }: ClipCurrentStatusProps) {
             )}
             <JobStageBadge stage={status.stage} />
             <span className="text-slate-600">Updated {status.updatedAtLabel}</span>
-            {status.canRetry ? <RetryJobButton jobId={status.jobId} /> : null}
+            {status.canRetry ? <RetryJobButton jobId={status.jobId} warningMessage={retryWarningMessage} /> : null}
           </div>
           {status.failureMessage ? <p className="text-sm text-rose-700">Error: {status.failureMessage}</p> : null}
         </div>

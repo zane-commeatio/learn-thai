@@ -13,9 +13,10 @@ type JobHistoryTableProps = {
     failureTooltip: string | null;
     canRetry: boolean;
   }>;
+  retryWarningMessage?: string | null;
 };
 
-export default function JobHistoryTable({ jobs }: JobHistoryTableProps) {
+export default function JobHistoryTable({ jobs, retryWarningMessage }: JobHistoryTableProps) {
   return (
     <section className="rounded-3xl border border-white/60 bg-white p-6 shadow-glass">
       <h2 className="text-xl font-semibold text-ink">Job History</h2>
@@ -40,7 +41,7 @@ export default function JobHistoryTable({ jobs }: JobHistoryTableProps) {
                 <td className="px-3 py-3"><JobStageBadge stage={job.stage} /></td>
                 <td className="px-3 py-3 text-slate-600">{job.updatedAtLabel}</td>
                 <td className="px-3 py-3">
-                  {job.canRetry ? <RetryJobButton jobId={job.id} /> : <span className="text-xs text-slate-400">-</span>}
+                  {job.canRetry ? <RetryJobButton jobId={job.id} warningMessage={retryWarningMessage} /> : <span className="text-xs text-slate-400">-</span>}
                 </td>
               </tr>
             ))}

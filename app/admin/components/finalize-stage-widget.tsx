@@ -7,6 +7,7 @@ type FinalizeStageWidgetProps = {
   artifactUrl: string | null;
   normalizedVideoUrl: string | null;
   posterUrl: string | null;
+  payload?: EditorPayload | null;
 };
 
 type PayloadState = {
@@ -36,6 +37,7 @@ export default function FinalizeStageWidget({
   artifactUrl,
   normalizedVideoUrl,
   posterUrl,
+  payload,
 }: FinalizeStageWidgetProps) {
   const [payloadState, setPayloadState] = useState<PayloadState>({
     payload: null,
@@ -44,6 +46,11 @@ export default function FinalizeStageWidget({
   const [currentMs, setCurrentMs] = useState(0);
 
   useEffect(() => {
+    if (payload) {
+      setPayloadState({ payload, error: null });
+      return undefined;
+    }
+
     if (!artifactUrl) {
       setPayloadState({ payload: null, error: null });
       return undefined;
@@ -82,7 +89,7 @@ export default function FinalizeStageWidget({
     return () => {
       controller.abort();
     };
-  }, [artifactUrl]);
+  }, [artifactUrl, payload]);
 
   useEffect(() => {
     setCurrentMs(0);

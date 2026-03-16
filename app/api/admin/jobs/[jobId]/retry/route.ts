@@ -6,6 +6,7 @@ import {
 import { retryJob } from "../../../../../../src/admin/services/retry-job";
 import { DrizzleAuditLogRepository } from "../../../../../../src/db/repositories/audit-log-repository";
 import { DrizzleProcessingJobsRepository } from "../../../../../../src/db/repositories/processing-jobs-repository";
+import { requireAdminSession } from "../../../../../../lib/admin-auth";
 import { getDb } from "../../../../../../lib/db";
 import { enqueueProcessingJob } from "../../../../../../lib/queue";
 
@@ -16,6 +17,7 @@ type RouteParams = {
 };
 
 export async function POST(_: Request, { params }: RouteParams) {
+  const session = await requireAdminSession();
   const { jobId } = await params;
   const db = getDb();
   const processingJobsRepository = new DrizzleProcessingJobsRepository(db);
@@ -30,7 +32,7 @@ export async function POST(_: Request, { params }: RouteParams) {
       },
       {
         jobId,
-        actorId: "admin",
+        actorId: session.email,
       },
     );
 

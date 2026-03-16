@@ -6,13 +6,14 @@ import { toast } from "sonner";
 
 type RetryJobButtonProps = {
   jobId: string;
+  warningMessage?: string | null;
 };
 
 type RetryResponse = {
   message?: string;
 };
 
-export default function RetryJobButton({ jobId }: RetryJobButtonProps) {
+export default function RetryJobButton({ jobId, warningMessage }: RetryJobButtonProps) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -21,6 +22,10 @@ export default function RetryJobButton({ jobId }: RetryJobButtonProps) {
       type="button"
       disabled={isPending}
       onClick={async () => {
+        if (warningMessage && !window.confirm(warningMessage)) {
+          return;
+        }
+
         setIsPending(true);
 
         try {

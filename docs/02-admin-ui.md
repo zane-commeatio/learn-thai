@@ -53,10 +53,21 @@ The clip detail page shows:
 
 - clip header metadata
 - current job status
+- publish-ready review checklist with system checks, human checks, and known gaps
 - pipeline stages panel
 - job history table
 
 The stages panel uses a view model built from the latest job and its `artifact_refs`.
+
+## Review checklist panel
+
+The clip detail page also renders a review checklist panel derived from the latest clip/job state.
+
+It currently does three things:
+
+- marks core system checks pass/fail from clip metadata and artifact refs
+- reminds operators which checks still require human judgment
+- makes current publish blockers visible without implying publish is implemented
 
 ## Stage UI behavior
 

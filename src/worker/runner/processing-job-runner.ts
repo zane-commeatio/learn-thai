@@ -10,9 +10,12 @@ import {
 import type { ProcessingJobQueueMessage } from "../../domain/queues/processing-jobs-queue";
 import { randomUUID } from "node:crypto";
 import type { AuditLogRepository } from "../../domain/repositories/audit-log-repository";
+import type { ClipEditorStatesRepository } from "../../domain/repositories/clip-editor-states-repository";
 import type {
   ProcessingJobsRepository,
 } from "../../domain/repositories/processing-jobs-repository";
+import { seedClipEditorStateFromJob } from "../../admin/services/clip-editor-state";
+import type { getObjectBuffer } from "../../../lib/storage";
 import {
   DefaultAudioNormalizationStageAdapter,
   type AudioNormalizationStageAdapter,
@@ -37,6 +40,8 @@ import {
 export type ProcessProcessingJobDependencies = {
   processingJobsRepository: ProcessingJobsRepository;
   auditLogRepository: AuditLogRepository;
+  clipEditorStatesRepository?: ClipEditorStatesRepository;
+  getObjectBuffer?: typeof getObjectBuffer;
   audioStageAdapter?: AudioNormalizationStageAdapter;
   asrStageAdapter?: AsrTranscriptionStageAdapter;
   segmentStageAdapter?: SegmentShapingStageAdapter;
@@ -106,6 +111,8 @@ export async function processProcessingJobMessage(
   const startedAt = Date.now();
 
   try {
+    let finalizeGeneratedPayloadPath: string | null = null;
+
     await dependencies.auditLogRepository.append({
       id: randomUUID(),
       actorId: "system",
@@ -223,6 +230,8 @@ export async function processProcessingJobMessage(
           finalize: finalizeArtifacts,
         },
       });
+
+      finalizeGeneratedPayloadPath = finalizeArtifacts.generatedPayloadPath;
     } else {
       throw new StageNotImplementedError(claimed.stage);
     }
@@ -266,6 +275,20 @@ export async function processProcessingJobMessage(
       }
 
       return;
+    }
+
+    if (finalizeGeneratedPayloadPath && dependencies.clipEditorStatesRepository && dependencies.getObjectBuffer) {
+      await seedClipEditorStateFromJob({
+        clipEditorStatesRepository: dependencies.clipEditorStatesRepository,
+        processingJobsRepository: dependencies.processingJobsRepository,
+        auditLogRepository: dependencies.auditLogRepository,
+        getObjectBuffer: dependencies.getObjectBuffer,
+      }, {
+        clipId: claimed.clipId,
+        sourceJobId: claimed.id,
+        generatedPayloadPath: finalizeGeneratedPayloadPath,
+        actorId: "system",
+      });
     }
 
     await dependencies.auditLogRepository.append({

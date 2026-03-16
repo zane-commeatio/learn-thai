@@ -2,6 +2,7 @@ import { Job, Worker } from "bullmq";
 import { config as loadEnv } from "dotenv";
 import { createDb } from "../db/client";
 import { DrizzleAuditLogRepository } from "../db/repositories/audit-log-repository";
+import { DrizzleClipEditorStatesRepository } from "../db/repositories/clip-editor-states-repository";
 import { DrizzleProcessingJobsRepository } from "../db/repositories/processing-jobs-repository";
 import type { ProcessingJobQueueMessage } from "../domain/queues/processing-jobs-queue";
 import { processProcessingJobMessage } from "../worker/runner/processing-job-runner";
@@ -12,6 +13,7 @@ import { NodeAsrTranscriptionStageAdapter } from "./asr-stage-adapter";
 import { NodeSegmentShapingStageAdapter } from "./segment-stage-adapter";
 import { NodeTranslationStageAdapter, OpenRouterTranslationBackend } from "./translation-stage-adapter";
 import { NodeFinalizeStageAdapter } from "./finalize-stage-adapter";
+import { getObjectBuffer } from "../../lib/storage";
 
 loadEnv({ path: ".env.local", quiet: true });
 loadEnv({ quiet: true });
@@ -31,6 +33,7 @@ const concurrency = Number(process.env.PROCESSING_WORKER_CONCURRENCY ?? "2");
 const db = createDb(databaseUrl);
 const processingJobsRepository = new DrizzleProcessingJobsRepository(db);
 const auditLogRepository = new DrizzleAuditLogRepository(db);
+const clipEditorStatesRepository = new DrizzleClipEditorStatesRepository(db);
 const audioStageAdapter = new NodeAudioNormalizationStageAdapter();
 const asrStageAdapter = new NodeAsrTranscriptionStageAdapter();
 const segmentStageAdapter = new NodeSegmentShapingStageAdapter();
@@ -49,6 +52,8 @@ const queueWorker = new Worker<ProcessingJobQueueMessage>(
       }, {
         processingJobsRepository,
         auditLogRepository,
+        clipEditorStatesRepository,
+        getObjectBuffer,
         audioStageAdapter,
         asrStageAdapter,
         segmentStageAdapter,

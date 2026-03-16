@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { EditorPayload } from "../../../src/contracts/editor-payload";
 import type { ClipStageViewModel } from "../clips/[clipId]/clip-detail-view-model";
 import AudioStageWidget from "./audio-stage-widget";
 import FinalizeStageWidget from "./finalize-stage-widget";
@@ -9,9 +10,11 @@ import StageArtifactViewer from "./stage-artifact-viewer";
 
 type PipelineStagesPanelProps = {
   stages: ClipStageViewModel[];
+  finalizePayload?: EditorPayload | null;
+  retryWarningMessage?: string | null;
 };
 
-function renderStageContent(stage: ClipStageViewModel) {
+function renderStageContent(stage: ClipStageViewModel, finalizePayload?: EditorPayload | null) {
   if (stage.content.kind === "audio") {
     return (
       <AudioStageWidget
@@ -73,6 +76,7 @@ function renderStageContent(stage: ClipStageViewModel) {
           artifactUrl={stage.content.artifactUrl}
           normalizedVideoUrl={stage.content.normalizedVideoUrl}
           posterUrl={stage.content.posterUrl}
+          payload={finalizePayload}
         />
       </div>
     );
@@ -81,7 +85,7 @@ function renderStageContent(stage: ClipStageViewModel) {
   return <p className="text-slate-600">{stage.content.message}</p>;
 }
 
-export default function PipelineStagesPanel({ stages }: PipelineStagesPanelProps) {
+export default function PipelineStagesPanel({ stages, finalizePayload, retryWarningMessage }: PipelineStagesPanelProps) {
   return (
     <section className="rounded-3xl border border-white/60 bg-white p-6 shadow-glass">
       <h2 className="text-xl font-semibold text-ink">Pipeline Stages</h2>
@@ -96,9 +100,9 @@ export default function PipelineStagesPanel({ stages }: PipelineStagesPanelProps
             <p className="mt-3 text-sm text-slate-600">{stage.description}</p>
             <p className="mt-1 text-xs text-slate-500">What to check: {stage.checkLine}</p>
 
-            <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
-              {renderStageContent(stage)}
-            </div>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+              {renderStageContent(stage, finalizePayload)}
+              </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {stage.downloads.map((download) => (
@@ -122,7 +126,7 @@ export default function PipelineStagesPanel({ stages }: PipelineStagesPanelProps
                 )
               ))}
 
-              {stage.retryJobId ? <RetryJobButton jobId={stage.retryJobId} /> : null}
+              {stage.retryJobId ? <RetryJobButton jobId={stage.retryJobId} warningMessage={retryWarningMessage} /> : null}
 
               {stage.showLockedAction ? (
                 <button
