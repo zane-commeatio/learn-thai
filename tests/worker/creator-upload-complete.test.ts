@@ -32,6 +32,10 @@ class InMemoryClipsRepository implements ClipsRepository {
   async getById(id: string): Promise<ClipRecord | null> {
     return this.clips.get(id) ?? null;
   }
+
+  async deleteById(id: string): Promise<void> {
+    this.clips.delete(id);
+  }
 }
 
 class InMemoryProcessingJobsRepository implements ProcessingJobsRepository {
@@ -63,6 +67,13 @@ class InMemoryProcessingJobsRepository implements ProcessingJobsRepository {
   async getActiveByClipId(clipId: string): Promise<ProcessingJobRecord | null> {
     const jobs = this.createdJobs.filter((job) => job.clipId === clipId && job.state === "processing");
     return jobs.length > 0 ? jobs[jobs.length - 1] : null;
+  }
+
+  async deleteById(id: string): Promise<void> {
+    const index = this.createdJobs.findIndex((job) => job.id === id);
+    if (index >= 0) {
+      this.createdJobs.splice(index, 1);
+    }
   }
 
   async updateStatusStageError(

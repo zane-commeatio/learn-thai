@@ -31,4 +31,8 @@ export class DrizzleClipsRepository implements ClipsRepository {
     const [row] = await this.db.select().from(clips).where(eq(clips.id, id)).limit(1);
     return row ? mapClipRow(row) : null;
   }
+
+  async deleteById(id: string): Promise<void> {
+    await this.db.delete(clips).where(eq(clips.id, id));
+  }
 }

@@ -64,6 +64,7 @@ export interface ProcessingJobsRepository {
   getById(id: string): Promise<ProcessingJobRecord | null>;
   getLatestByClipId(clipId: string): Promise<ProcessingJobRecord | null>;
   getActiveByClipId(clipId: string): Promise<ProcessingJobRecord | null>;
+  deleteById(id: string): Promise<void>;
   updateStatusStageError(
     input: UpdateProcessingJobInput,
   ): Promise<ProcessingJobRecord | null>;

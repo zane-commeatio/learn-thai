@@ -7,7 +7,7 @@ import {
 } from "../../../../../lib/api-route";
 import { getDb } from "../../../../../lib/db";
 import { enqueueProcessingJob } from "../../../../../lib/queue";
-import { putObject } from "../../../../../lib/storage";
+import { deleteObject, putObject } from "../../../../../lib/storage";
 import { invalidRequest } from "../../../../../src/contracts/api-error";
 
 export async function POST(request: Request) {
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         clipsRepository,
         processingJobsRepository,
         putObject,
+        deleteObject,
         enqueueProcessingJob,
       },
       {

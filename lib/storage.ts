@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   NoSuchKey,
   PutObjectCommand,
@@ -80,4 +81,11 @@ export async function getObjectBuffer(key: string): Promise<Buffer | null> {
 
     throw error;
   }
+}
+
+export async function deleteObject(key: string): Promise<void> {
+  await getStorageClient().send(new DeleteObjectCommand({
+    Bucket: getStorageBucket(),
+    Key: key,
+  }));
 }

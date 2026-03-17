@@ -76,6 +76,10 @@ export class DrizzleProcessingJobsRepository implements ProcessingJobsRepository
     return row ? mapProcessingJobRow(row) : null;
   }
 
+  async deleteById(id: string): Promise<void> {
+    await this.db.delete(processingJobs).where(eq(processingJobs.id, id));
+  }
+
   async updateStatusStageError(
     input: UpdateProcessingJobInput,
   ): Promise<ProcessingJobRecord | null> {

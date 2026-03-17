@@ -49,6 +49,7 @@ export async function retryJob(
 
   const createId = dependencies.createId ?? (() => crypto.randomUUID());
   const retryJobId = createId();
+  let createdRetryJob = false;
 
   try {
     await dependencies.processingJobsRepository.create({
@@ -58,12 +59,7 @@ export async function retryJob(
       stage: "audio",
       errorPayload: null,
     });
-
-    await dependencies.enqueueProcessingJob({
-      jobId: retryJobId,
-      clipId: sourceJob.clipId,
-      expectedStage: "audio",
-    });
+    createdRetryJob = true;
 
     await dependencies.auditLogRepository.append({
       id: createId(),
@@ -77,7 +73,17 @@ export async function retryJob(
         restartStage: "audio",
       },
     });
+
+    await dependencies.enqueueProcessingJob({
+      jobId: retryJobId,
+      clipId: sourceJob.clipId,
+      expectedStage: "audio",
+    });
   } catch (error) {
+    if (createdRetryJob) {
+      await dependencies.processingJobsRepository.deleteById(retryJobId).catch(() => undefined);
+    }
+
     throw new AdminServiceError(
       "processing_failed",
       error instanceof Error ? error.message : "Failed to retry job",

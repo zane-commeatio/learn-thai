@@ -21,4 +21,5 @@ export type CreateClipInput = {
 export interface ClipsRepository {
   create(input: CreateClipInput): Promise<ClipRecord>;
   getById(id: string): Promise<ClipRecord | null>;
+  deleteById(id: string): Promise<void>;
 }

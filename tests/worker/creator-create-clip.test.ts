@@ -23,6 +23,10 @@ class InMemoryClipsRepository implements ClipsRepository {
     void id;
     return null;
   }
+
+  async deleteById(id: string): Promise<void> {
+    void id;
+  }
 }
 
 function makeDependencies(repository: InMemoryClipsRepository) {

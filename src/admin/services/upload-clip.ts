@@ -1,5 +1,5 @@
 import type { enqueueProcessingJob } from "../../../lib/queue";
-import type { putObject } from "../../../lib/storage";
+import type { deleteObject, putObject } from "../../../lib/storage";
 import type { ClipsRepository } from "../../domain/repositories/clips-repository";
 import type { ProcessingJobsRepository } from "../../domain/repositories/processing-jobs-repository";
 import { AdminServiceError } from "./errors";
@@ -25,6 +25,7 @@ export type UploadClipDependencies = {
   clipsRepository: ClipsRepository;
   processingJobsRepository: ProcessingJobsRepository;
   putObject: typeof putObject;
+  deleteObject: typeof deleteObject;
   enqueueProcessingJob: typeof enqueueProcessingJob;
   createId?: () => string;
 };
@@ -49,6 +50,9 @@ export async function uploadClip(
   const clipId = createId();
   const jobId = createId();
   const sourceKey = `clips/${clipId}/${SOURCE_OBJECT_NAME}`;
+  let storedSourceObject = false;
+  let createdClip = false;
+  let createdProcessingJob = false;
 
   try {
     await dependencies.putObject({
@@ -56,6 +60,7 @@ export async function uploadClip(
       body: input.fileBytes,
       contentType: input.fileType || "application/octet-stream",
     });
+    storedSourceObject = true;
 
     await dependencies.clipsRepository.create({
       id: clipId,
@@ -64,6 +69,7 @@ export async function uploadClip(
       sourceType: "original",
       rightsStatus: "cleared",
     });
+    createdClip = true;
 
     await dependencies.processingJobsRepository.create({
       id: jobId,
@@ -72,6 +78,7 @@ export async function uploadClip(
       stage: "audio",
       errorPayload: null,
     });
+    createdProcessingJob = true;
 
     await dependencies.enqueueProcessingJob({
       jobId,
@@ -79,6 +86,15 @@ export async function uploadClip(
       expectedStage: "audio",
     });
   } catch (error) {
+    await rollbackUploadClip(dependencies, {
+      clipId,
+      jobId,
+      sourceKey,
+      storedSourceObject,
+      createdClip,
+      createdProcessingJob,
+    });
+
     throw new AdminServiceError(
       "processing_failed",
       error instanceof Error ? error.message : "Failed to upload clip",
@@ -90,4 +106,36 @@ export async function uploadClip(
     jobId,
     message: "Upload accepted and queued for processing",
   };
+}
+
+async function rollbackUploadClip(
+  dependencies: UploadClipDependencies,
+  input: {
+    clipId: string;
+    jobId: string;
+    sourceKey: string;
+    storedSourceObject: boolean;
+    createdClip: boolean;
+    createdProcessingJob: boolean;
+  },
+): Promise<void> {
+  const cleanupOperations: Array<Promise<void>> = [];
+
+  if (input.createdProcessingJob) {
+    cleanupOperations.push(dependencies.processingJobsRepository.deleteById(input.jobId));
+  }
+
+  if (input.createdClip) {
+    cleanupOperations.push(dependencies.clipsRepository.deleteById(input.clipId));
+  }
+
+  if (input.storedSourceObject) {
+    cleanupOperations.push(dependencies.deleteObject(input.sourceKey));
+  }
+
+  const cleanupResults = await Promise.allSettled(cleanupOperations);
+  const cleanupFailure = cleanupResults.find((result) => result.status === "rejected");
+  if (cleanupFailure) {
+    throw cleanupFailure.reason;
+  }
 }

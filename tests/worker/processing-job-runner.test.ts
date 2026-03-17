@@ -50,6 +50,10 @@ class InMemoryProcessingJobsRepository implements ProcessingJobsRepository {
     return matches[matches.length - 1] ?? null;
   }
 
+  async deleteById(id: string): Promise<void> {
+    this.jobs.delete(id);
+  }
+
   async updateStatusStageError(
     input: UpdateProcessingJobInput,
   ): Promise<ProcessingJobRecord | null> {

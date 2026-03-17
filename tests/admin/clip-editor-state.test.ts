@@ -69,6 +69,8 @@ class InMemoryProcessingJobsRepository implements ProcessingJobsRepository {
     return null;
   }
 
+  async deleteById(_id: string): Promise<void> {}
+
   async updateStatusStageError(_input: UpdateProcessingJobInput): Promise<ProcessingJobRecord | null> {
     throw new Error("not implemented");
   }
