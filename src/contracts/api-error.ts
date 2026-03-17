@@ -5,6 +5,7 @@ export const ApiErrorCodeSchema = z.enum([
   "forbidden",
   "not_found",
   "invalid_request",
+  "invalid_state",
   "conflict",
   "rate_limited",
   "processing_failed",
@@ -43,4 +44,8 @@ export function jsonError(
 
 export function invalidRequest(message: string, details?: unknown): Response {
   return jsonError("invalid_request", message, 400, details);
+}
+
+export function processingFailed(message: string, details?: unknown): Response {
+  return jsonError("processing_failed", message, 500, details);
 }

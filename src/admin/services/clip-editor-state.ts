@@ -34,7 +34,40 @@ type ClipEditorStateServiceDependencies = {
   now?: () => Date;
 };
 
+function validateEditorSegments(current: EditorPayload, segments: z.infer<typeof EditorStateUpdateInputSchema>["segments"]) {
+  if (segments.length !== current.segments.length) {
+    throw new AdminServiceError("invalid_request", "Edited segments must match the current segment count");
+  }
+
+  const currentIndexes = current.segments.map((segment) => segment.index);
+  const nextIndexes = segments.map((segment) => segment.index);
+  if (currentIndexes.some((index, position) => index !== nextIndexes[position])) {
+    throw new AdminServiceError("invalid_request", "Edited segments must preserve segment indexes and order");
+  }
+
+  let previousEndMs: number | null = null;
+  for (const segment of segments) {
+    if (segment.startMs !== null && segment.endMs !== null && segment.startMs >= segment.endMs) {
+      throw new AdminServiceError(
+        "invalid_request",
+        `Segment ${segment.index} start time must be earlier than end time`,
+      );
+    }
+
+    if (previousEndMs !== null && segment.startMs !== null && segment.startMs < previousEndMs) {
+      throw new AdminServiceError(
+        "invalid_request",
+        `Segment ${segment.index} starts before the previous segment ends`,
+      );
+    }
+
+    previousEndMs = segment.endMs;
+  }
+}
+
 function normalizeEditorUpdate(current: EditorPayload, editor: z.infer<typeof EditorStateUpdateInputSchema>) {
+  validateEditorSegments(current, editor.segments);
+
   const normalizedThumbnail = {
     ...editor.thumbnail,
     source: current.thumbnail.imagePath === editor.thumbnail.imagePath ? editor.thumbnail.source : "manual",

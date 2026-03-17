@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { DrizzleAuditLogRepository } from "../../../../../../src/db/repositories/audit-log-repository";
 import { DrizzleClipEditorStatesRepository } from "../../../../../../src/db/repositories/clip-editor-states-repository";
 import { DrizzleProcessingJobsRepository } from "../../../../../../src/db/repositories/processing-jobs-repository";
@@ -7,12 +6,12 @@ import {
   reviewClipEditorState,
 } from "../../../../../../src/admin/services/clip-editor-state";
 import {
-  getAdminServiceErrorStatus,
-  isAdminServiceError,
-} from "../../../../../../src/admin/services/errors";
-import { requireAdminSession } from "../../../../../../lib/admin-auth";
+  adminRouteErrorResponse,
+  requireAdminApiSession,
+} from "../../../../../../lib/api-route";
 import { getDb } from "../../../../../../lib/db";
 import { getObjectBuffer } from "../../../../../../lib/storage";
+import { invalidRequest } from "../../../../../../src/contracts/api-error";
 
 type RouteParams = {
   params: Promise<{
@@ -21,13 +20,15 @@ type RouteParams = {
 };
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await requireAdminSession();
-  const { clipId } = await params;
-  const db = getDb();
-
   try {
-    const body = await request.json();
-    const { status } = ReviewDecisionInputSchema.parse(body);
+    const session = await requireAdminApiSession();
+    const { clipId } = await params;
+    const db = getDb();
+    const body = await request.json().catch(() => null);
+    const parsed = ReviewDecisionInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return invalidRequest("Invalid request", parsed.error.flatten());
+    }
 
     const state = await reviewClipEditorState({
       clipEditorStatesRepository: new DrizzleClipEditorStatesRepository(db),
@@ -37,15 +38,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     }, {
       clipId,
       actorId: session.email,
-      status,
+      status: parsed.data.status,
     });
 
-    return NextResponse.json({ editorState: state });
+    return Response.json({ editorState: state });
   } catch (error) {
-    if (isAdminServiceError(error)) {
-      return NextResponse.json({ code: error.code, message: error.message }, { status: getAdminServiceErrorStatus(error) });
-    }
-
-    return NextResponse.json({ code: "processing_failed", message: error instanceof Error ? error.message : "Failed to update review state" }, { status: 500 });
+    return adminRouteErrorResponse(error, "Failed to update review state");
   }
 }

@@ -387,4 +387,134 @@ describe("clip editor state services", () => {
     expect(shouldWarnBeforeRetry({ reviewStatus: "edited", hasManualChanges: true })).toBe(true);
     expect(getRetryWarningMessage({ reviewStatus: "approved", hasManualChanges: true })).toContain("reseed the editor state");
   });
+
+  it("rejects segments with inverted timing", async () => {
+    const clipEditorStatesRepository = new InMemoryClipEditorStatesRepository();
+    const processingJobsRepository = new InMemoryProcessingJobsRepository([makeJob()]);
+
+    await seedClipEditorStateFromJob({
+      clipEditorStatesRepository,
+      processingJobsRepository,
+      getObjectBuffer: async () => Buffer.from(JSON.stringify(makePayload()), "utf8"),
+      now: () => new Date("2026-03-16T13:00:00.000Z"),
+    }, {
+      clipId: "clip_1",
+      sourceJobId: "job_1",
+      generatedPayloadPath: "clips/clip_1/jobs/job_1/generated-payload.json",
+      actorId: "owner@example.com",
+    });
+
+    await expect(updateClipEditorState({
+      clipEditorStatesRepository,
+      processingJobsRepository,
+      getObjectBuffer: async () => null,
+      now: () => new Date("2026-03-16T13:05:00.000Z"),
+    }, {
+      clipId: "clip_1",
+      actorId: "owner@example.com",
+      editor: {
+        thumbnail: {
+          imagePath: "clips/clip_1/jobs/job_1/poster.jpg",
+          source: "generated",
+        },
+        segments: [
+          {
+            index: 0,
+            text: "สวัสดีครับ",
+            startMs: 900,
+            endMs: 100,
+            translation: {
+              englishText: "Hello.",
+              source: "generated",
+            },
+          },
+        ],
+      },
+    })).rejects.toMatchObject({
+      code: "invalid_request",
+      message: "Segment 0 start time must be earlier than end time",
+    });
+  });
+
+  it("rejects segments that overlap the previous segment", async () => {
+    const clipEditorStatesRepository = new InMemoryClipEditorStatesRepository();
+    const processingJobsRepository = new InMemoryProcessingJobsRepository([makeJob()]);
+
+    await seedClipEditorStateFromJob({
+      clipEditorStatesRepository,
+      processingJobsRepository,
+      getObjectBuffer: async () => Buffer.from(JSON.stringify({
+        ...makePayload(),
+        segments: [
+          {
+            index: 0,
+            text: "สวัสดีครับ",
+            startMs: 0,
+            endMs: 900,
+            translation: {
+              englishText: "Hello.",
+              source: "generated",
+            },
+          },
+          {
+            index: 1,
+            text: "ขอบคุณครับ",
+            startMs: 900,
+            endMs: 1_500,
+            translation: {
+              englishText: "Thank you.",
+              source: "generated",
+            },
+          },
+        ],
+      }), "utf8"),
+      now: () => new Date("2026-03-16T13:00:00.000Z"),
+    }, {
+      clipId: "clip_1",
+      sourceJobId: "job_1",
+      generatedPayloadPath: "clips/clip_1/jobs/job_1/generated-payload.json",
+      actorId: "owner@example.com",
+    });
+
+    await expect(updateClipEditorState({
+      clipEditorStatesRepository,
+      processingJobsRepository,
+      getObjectBuffer: async () => null,
+      now: () => new Date("2026-03-16T13:05:00.000Z"),
+    }, {
+      clipId: "clip_1",
+      actorId: "owner@example.com",
+      editor: {
+        thumbnail: {
+          imagePath: "clips/clip_1/jobs/job_1/poster.jpg",
+          source: "generated",
+        },
+        segments: [
+          {
+            index: 0,
+            text: "สวัสดีครับ",
+            startMs: 0,
+            endMs: 900,
+            translation: {
+              englishText: "Hello.",
+              source: "generated",
+            },
+          },
+          {
+            index: 1,
+            text: "ขอบคุณครับ",
+            startMs: 850,
+            endMs: 1_500,
+            translation: {
+              englishText: "Thank you.",
+              source: "generated",
+            },
+          },
+        ],
+      },
+    })).rejects.toMatchObject({
+      code: "invalid_request",
+      message: "Segment 1 starts before the previous segment ends",
+    });
+  });
 });

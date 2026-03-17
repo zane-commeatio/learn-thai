@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { DrizzleAuditLogRepository } from "../../../../../../src/db/repositories/audit-log-repository";
 import { DrizzleClipEditorStatesRepository } from "../../../../../../src/db/repositories/clip-editor-states-repository";
 import { DrizzleClipsRepository } from "../../../../../../src/db/repositories/clips-repository";
@@ -9,12 +9,12 @@ import {
   updateClipEditorState,
 } from "../../../../../../src/admin/services/clip-editor-state";
 import {
-  getAdminServiceErrorStatus,
-  isAdminServiceError,
-} from "../../../../../../src/admin/services/errors";
-import { requireAdminSession } from "../../../../../../lib/admin-auth";
+  adminRouteErrorResponse,
+  requireAdminApiSession,
+} from "../../../../../../lib/api-route";
 import { getDb } from "../../../../../../lib/db";
 import { getObjectBuffer } from "../../../../../../lib/storage";
+import { invalidRequest, jsonError } from "../../../../../../src/contracts/api-error";
 
 type RouteParams = {
   params: Promise<{
@@ -23,11 +23,10 @@ type RouteParams = {
 };
 
 export async function GET(_: Request, { params }: RouteParams) {
-  const session = await requireAdminSession();
-  const { clipId } = await params;
-  const db = getDb();
-
   try {
+    const session = await requireAdminApiSession();
+    const { clipId } = await params;
+    const db = getDb();
     const state = await getOrCreateClipEditorState({
       clipEditorStatesRepository: new DrizzleClipEditorStatesRepository(db),
       processingJobsRepository: new DrizzleProcessingJobsRepository(db),
@@ -38,34 +37,35 @@ export async function GET(_: Request, { params }: RouteParams) {
       actorId: session.email,
     });
 
-    return NextResponse.json({ editorState: state });
+    return Response.json({ editorState: state });
   } catch (error) {
-    if (isAdminServiceError(error)) {
-      return NextResponse.json({ code: error.code, message: error.message }, { status: getAdminServiceErrorStatus(error) });
-    }
-
-    return NextResponse.json({ code: "processing_failed", message: error instanceof Error ? error.message : "Failed to load editor state" }, { status: 500 });
+    return adminRouteErrorResponse(error, "Failed to load editor state");
   }
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const session = await requireAdminSession();
-  const { clipId } = await params;
-  const db = getDb();
-  const clipsRepository = new DrizzleClipsRepository(db);
-
   try {
+    const session = await requireAdminApiSession();
+    const { clipId } = await params;
+    const db = getDb();
+    const clipsRepository = new DrizzleClipsRepository(db);
     const clip = await clipsRepository.getById(clipId);
     if (!clip) {
-      return NextResponse.json({ code: "not_found", message: "Clip not found" }, { status: 404 });
+      return jsonError("not_found", "Clip not found", 404);
     }
 
     if (clip.ownerId !== session.email && clip.ownerId !== "admin") {
-      return NextResponse.json({ code: "forbidden", message: "Only the clip uploader can edit review content" }, { status: 403 });
+      return jsonError("forbidden", "Only the clip uploader can edit review content", 403);
     }
 
-    const body = await request.json();
-    const editor = EditorStateUpdateInputSchema.parse(body);
+    const body = await request.json().catch(() => {
+      throw new ZodError([]);
+    });
+    const parsed = EditorStateUpdateInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return invalidRequest("Invalid request", parsed.error.flatten());
+    }
+
     const state = await updateClipEditorState({
       clipEditorStatesRepository: new DrizzleClipEditorStatesRepository(db),
       processingJobsRepository: new DrizzleProcessingJobsRepository(db),
@@ -74,15 +74,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }, {
       clipId,
       actorId: session.email,
-      editor,
+      editor: parsed.data,
     });
 
-    return NextResponse.json({ editorState: state });
+    return Response.json({ editorState: state });
   } catch (error) {
-    if (isAdminServiceError(error)) {
-      return NextResponse.json({ code: error.code, message: error.message }, { status: getAdminServiceErrorStatus(error) });
+    if (error instanceof ZodError) {
+      return invalidRequest("Request body must be valid JSON");
     }
 
-    return NextResponse.json({ code: "processing_failed", message: error instanceof Error ? error.message : "Failed to update editor state" }, { status: 500 });
+    return adminRouteErrorResponse(error, "Failed to update editor state");
   }
 }
